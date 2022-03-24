@@ -1,59 +1,93 @@
 package com.basuoni.chatroom
 
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import com.google.firebase.FirebaseException
+import com.google.firebase.FirebaseTooManyRequestsException
+import com.google.firebase.auth.*
+import java.util.concurrent.TimeUnit
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [SingUpFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
 class SingUpFragment : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
-    }
-
+    private lateinit var auth: FirebaseAuth
+    private var storedVerificationId: String = ""
+    private lateinit var resendToken: PhoneAuthProvider.ForceResendingToken
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
+        auth = FirebaseAuth.getInstance()
         return inflater.inflate(R.layout.fragment_sing_up, container, false)
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment SingUpFragment.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            SingUpFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
+    private val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
+        override fun onVerificationCompleted(credential: PhoneAuthCredential) {
+            Log.d("TAG", "onVerificationCompleted:$credential")
+            signInWithPhoneAuthCredential(credential)
+        }
+
+        override fun onVerificationFailed(e: FirebaseException) {
+            Log.w("TAG", "onVerificationFailed", e)
+
+            if (e is FirebaseAuthInvalidCredentialsException) {
+                // Invalid request
+            } else if (e is FirebaseTooManyRequestsException) {
+                // The SMS quota for the project has been exceeded
+            }
+        }
+
+        override fun onCodeSent(
+            verificationId: String,
+            token: PhoneAuthProvider.ForceResendingToken
+        ) {
+            Log.d("TAG", "onCodeSent:$verificationId")
+            storedVerificationId = verificationId
+            resendToken = token
+        }
+
+        override fun onCodeAutoRetrievalTimeOut(p0: String) {
+            super.onCodeAutoRetrievalTimeOut(p0)
+            Log.e("TAG", "time out:$p0")
+        }
+    }
+
+    private fun signInWithPhoneAuthCredential(credential: PhoneAuthCredential) {
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener(requireActivity()) { task ->
+                if (task.isSuccessful) {
+                    // Sign in success, update UI with the signed-in user's information
+                    Log.d("TAG", "signInWithCredential:success")
+
+                    val user = task.result?.user
+                } else {
+                    // Sign in failed, display a message and update the UI
+                    if (task.exception is FirebaseAuthInvalidCredentialsException) {
+                        // The verification code entered was invalid
+                        Log.w("TAG", "The verification code entered was invalid :failure", task.exception)
+
+                    }else
+                        Log.w("TAG", "signInWithCredential:failure", task.exception)
+
+                    // Update UI
                 }
             }
+    }
+
+    fun confirmCode(code: String) {
+        val credential = PhoneAuthProvider.getCredential(storedVerificationId, code)
+        signInWithPhoneAuthCredential(credential)
+    }
+
+    fun sendCode(phone: String) {
+        val options = PhoneAuthOptions.newBuilder(auth)
+            .setPhoneNumber(phone)       // Phone number to verify
+            .setTimeout(120L, TimeUnit.SECONDS) // Timeout and unit
+            .setActivity(requireActivity())                 // Activity (for callback binding)
+            .setCallbacks(callbacks)          // OnVerificationStateChangedCallbacks
+            .build()
+        PhoneAuthProvider.verifyPhoneNumber(options)
     }
 }
