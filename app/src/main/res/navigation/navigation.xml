@@ -15,4 +15,9 @@
         android:name="com.basuoni.chatroom.SingUpFragment"
         android:label="fragment_sing_up"
         tools:layout="@layout/fragment_sing_up" />
+    <fragment
+        android:id="@+id/signinFragment"
+        android:name="com.basuoni.chatroom.SigninFragment"
+        android:label="fragment_signin"
+        tools:layout="@layout/fragment_signin" />
 </navigation>
