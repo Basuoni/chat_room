@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~  Copyright Ⓒ 2022.
+  ~  Created Ahmed Basuoni on 1/24/22, 12:42 AM.
+  ~  Last modified: 1/24/22, 12:41 AM.
+  -->
+
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:autoMirrored="true">
+<solid
+    android:color="#F0F1F5"
+    />
+    <corners
+        android:radius="@dimen/_15sdp"
+        android:topRightRadius="0dp"/>
+</shape>
